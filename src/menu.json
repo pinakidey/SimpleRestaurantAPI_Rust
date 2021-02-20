@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Hors-d'oeuvre / Appetiser",
+    "preparation_time": 10,
+    "status": "active"
+  },
+  {
+    "name": "Potage / Soup",
+    "preparation_time": 10,
+    "status": "active"
+  },
+  {
+    "name": "Poisson / Fish",
+    "preparation_time": 15,
+    "status": "active"
+  },
+  {
+    "name": "Entree / Entree",
+    "preparation_time": 15,
+    "status": "active"
+  },
+  {
+    "name": "Releves / Joints",
+    "preparation_time": 15,
+    "status": "active"
+  },
+  {
+    "name": "Entremets / Sweets",
+    "preparation_time": 10,
+    "status": "active"
+  },
+  {
+    "name": "Boissons / Beverage",
+    "preparation_time": 5,
+    "status": "active"
+  }
+]
+

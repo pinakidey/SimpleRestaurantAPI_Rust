@@ -1,0 +1,17 @@
+[package]
+name = "simple_restaurant_api"
+version = "0.1.0"
+authors = ["Pinaki Dey <pinaki@pinakidey.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rocket = "0.4.7"
+rocket_contrib = {version = "0.4.7", features = ["uuid"] }
+serde = { version = "1.0.123", features = ["derive"] }
+serde_json = "1.0.62"
+chrono = "0.4.19"
+uuid = { version = "0.8.2", features = ["serde", "v4"] }
+reqwest = { version = "0.11.1", features = ["json"] }
+tokio = { version = "1.2.0", features = ["full"] }
