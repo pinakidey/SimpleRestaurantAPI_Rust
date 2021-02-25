@@ -25,6 +25,8 @@ The concepts of trait implementation, lifetime, ownership, borrowing(!), Arc/Rc/
 `rustup default nightly`
 
 
+## Implementation
+
 ### Functional features
 
 

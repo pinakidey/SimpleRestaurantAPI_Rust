@@ -5,6 +5,7 @@ mod menus {
     use rocket::local::{Client};
     use rocket::http::{Status, ContentType};
     use serde::{Deserialize, Serialize};
+    use crate::routes::{rocket};
 
     const VALID_MENU_PAYLOAD: &str = "{
     \"status\": \"active\",
@@ -12,9 +13,7 @@ mod menus {
     \"preparation_time\": 10
 }";
     const INVALID_MENU_PAYLOAD_1: &str = "{
-    \"id\" : \"1\",
     \"status\": \"active\",
-    \"name\": \"Hors-d'oeuvre / Appetiser\",
     \"preparation_time\": 10
 }";
     const INVALID_MENU_PAYLOAD_2: &str = "{
@@ -43,13 +42,13 @@ mod menus {
         assert_eq!(res.status(), Status::Created);
 
         // Negative Tests
-        // Tests with payload containing `id`
+        // Tests with payload without `name`
         res = client.post("/menus")
             .header(ContentType::JSON)
             .body(INVALID_MENU_PAYLOAD_1)
             .dispatch();
         println!("{:?}", res.body_string());
-        assert_eq!(res.status(), Status::BadRequest);
+        assert_eq!(res.status(), Status::UnprocessableEntity);
 
         // Tests with payload without `preparation_time`
         res = client.post("/menus")
@@ -103,6 +102,7 @@ mod menus {
     }
 
     #[test]
+    /// Tests for delete_menu()
     fn test_delete_menu() {
         // Positive test is performed inside test_get_menus()
 
