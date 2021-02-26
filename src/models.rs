@@ -3,6 +3,7 @@ use rocket::http::{ContentType, Status};
 use rocket::response::Responder;
 use rocket_contrib::json::JsonValue;
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicU8};
 
 #[derive(Serialize, Deserialize, Debug)]
 /// Model for individual order. All non-optional properties are mandatory in API Request.
@@ -12,7 +13,7 @@ use serde::{Deserialize, Serialize};
 // However, in this project we allow updating quantity.
 pub(crate) struct Order {
     pub(crate) id: Option<String>,
-    pub(crate) table_id: String,                           // updatable
+    pub(crate) table_id: String,
     pub(crate) menu_id: String,
     pub(crate) menu_name: Option<String>,
     pub(crate) quantity: u8,                               // updatable
@@ -30,6 +31,21 @@ pub(crate) struct Menu {
     pub(crate) status: String,
     pub(crate) name: String,
     pub(crate) preparation_time: u8,
+}
+
+/// A thread-safe struct to save Table count
+// Ideally there should be `struct Table` with various fields like `id:<String>, state: <reserved|occupied|vacant|maintenance>` etc.
+// But, those are not necessary for this project.
+// We assume that tables are numbered sequentially (ie. if there are 10 tables numbered 1 to 10,
+// setting TableCount to 5 will re-number all tables as 1 to 5).
+// Restaurant admin should not reduce TableCount when the restaurant is in business-hours.
+// When creating orders, /orders API just checks that the `table_id` is <= TableCount (i.e. in range)
+pub(crate) struct TableCount(pub AtomicU8);
+
+#[derive(Serialize, Deserialize, Debug)]
+/// Model for configuration
+pub(crate) struct Config {
+    pub(crate) table_count: u8,
 }
 
 /// An enum for order states
@@ -81,5 +97,6 @@ impl<'r> Responder<'r> for ApiResponse {
 /// Struct for QueryParams supported by `GET /orders`
 pub(crate) struct OrderQueryParams {
     pub(crate) table_id: Option<String>,
-    pub(crate) menu_id: Option<String>
+    pub(crate) menu_id: Option<String>,
+    pub(crate) state: Option<String>
 }

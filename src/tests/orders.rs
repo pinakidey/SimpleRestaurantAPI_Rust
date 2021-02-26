@@ -40,10 +40,17 @@ mod orders {
             \"quantity\": 2,
             \"state\": \"SERVED\"
         }";
-    const INVALID_UPDATE_ORDER_PAYLOAD: &str =
+    const INVALID_UPDATE_ORDER_PAYLOAD_1: &str =
         "{
             \"menu_id\": \"MENU_ID_PLACEHOLDER\",
             \"quantity\": 2
+        }";
+    const INVALID_UPDATE_ORDER_PAYLOAD_2: &str =
+        "{
+            \"table_id\": \"1\",
+            \"menu_id\": \"MENU_ID_PLACEHOLDER\",
+            \"quantity\": 2,
+            \"state\": \"SERVED\"
         }";
     const INVALID_CREATE_ORDER_PAYLOAD_1: &str =
         "{
@@ -59,6 +66,18 @@ mod orders {
         "{
             \"table_id\": \"1\",
             \"menu_id\": \"MENU_ID_PLACEHOLDER\"
+        }";
+    const INVALID_CREATE_ORDER_PAYLOAD_4: &str =
+        "{
+            \"table_id\": \"101\",
+            \"menu_id\": \"MENU_ID_PLACEHOLDER\",
+            \"quantity\": 1
+        }";
+    const INVALID_CREATE_ORDER_PAYLOAD_5: &str =
+        "{
+            \"table_id\": \"0\",
+            \"menu_id\": \"MENU_ID_PLACEHOLDER\",
+            \"quantity\": 1
         }";
 
 
@@ -125,6 +144,18 @@ mod orders {
         res = client.post("/orders")
             .header(ContentType::JSON)
             .body(VALID_CREATE_ORDER_PAYLOAD_1.replace("MENU_ID_PLACEHOLDER", "INVALID"))
+            .dispatch();
+        assert_eq!(res.status(), Status::BadRequest);
+
+        // Tests with invalid (out of range) table_id
+        res = client.post("/orders")
+            .header(ContentType::JSON)
+            .body(INVALID_CREATE_ORDER_PAYLOAD_4.replace("MENU_ID_PLACEHOLDER", menu_id.as_str()))
+            .dispatch();
+        assert_eq!(res.status(), Status::BadRequest);
+        res = client.post("/orders")
+            .header(ContentType::JSON)
+            .body(INVALID_CREATE_ORDER_PAYLOAD_5.replace("MENU_ID_PLACEHOLDER", menu_id.as_str()))
             .dispatch();
         assert_eq!(res.status(), Status::BadRequest);
 
@@ -204,6 +235,13 @@ mod orders {
         println!("{:#?}", body);
         assert!(body.contains(&order_id));
 
+        // Filter with state
+        res = client.get(format!("/orders?state={}", "SERVED")).header(ContentType::JSON).dispatch();
+        assert_eq!(res.status(), Status::Ok);
+        let body = res.body_string().unwrap();
+        println!("{:#?}", body);
+        assert!(body.contains("\"count\":1"));
+
         // Verify served_time is not null
         res = client.get(format!("/orders/{}", order_id)).header(ContentType::JSON).dispatch();
         assert_eq!(res.status(), Status::Ok);
@@ -222,8 +260,15 @@ mod orders {
         // Try updating without table_id
         res = client.put(format!("/orders/{}", order_id))
             .header(ContentType::JSON)
-            .body(INVALID_UPDATE_ORDER_PAYLOAD.replace("MENU_ID_PLACEHOLDER", menu_id.as_str()))
+            .body(INVALID_UPDATE_ORDER_PAYLOAD_1.replace("MENU_ID_PLACEHOLDER", menu_id.as_str()))
             .dispatch();
         assert_eq!(res.status(), Status::UnprocessableEntity);
+
+        // Try updating with a different table_id
+        res = client.put(format!("/orders/{}", order_id))
+            .header(ContentType::JSON)
+            .body(INVALID_UPDATE_ORDER_PAYLOAD_2.replace("MENU_ID_PLACEHOLDER", menu_id.as_str()))
+            .dispatch();
+        assert_eq!(res.status(), Status::BadRequest);
     }
 }

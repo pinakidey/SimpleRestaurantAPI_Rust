@@ -3,19 +3,19 @@
 I started learning Rust last week. I finished a course on Udemy on Rust (3-4days), 
 read the rust-docs (in part) and Rocket docs (in full).
 
-Rust is very interesting and reminds me of C++ days.
+This is my first project in Rust. 
+I found Rust very interesting, it made me think a lot more about WHY, at every step, instead of HOW and reminds me of C++ days.
 
-As building blocks of this project, I have mostly followed Rocket docs
-to curate one block at a time.
-
-The concepts of trait implementation, lifetime, ownership, borrowing(!), Arc/Rc/RfCell/Mutex etc. are still `volatile` in my memory, but I have tried my best to put up something, in a limited time.
+The concepts of trait implementation, lifetime, ownership, borrowing(!), Arc/Rc/RfCell/Mutex etc. are still `volatile` in my memory, 
+but I have tried my best to put up something (with sufficient tests), in a limited time.
 
 ## Assumptions
 - Since the problem statement doesn't mention data needs to be stored `on-disk` persistently, 
   I am assuming an on-memory db or data-structure is fine.
 
 
-
+## Documentation
+Please check the API_SPEC.md for API specification.
 
 ## Build & Run
 
@@ -24,6 +24,13 @@ The concepts of trait implementation, lifetime, ownership, borrowing(!), Arc/Rc/
 `rustup toolchain install nightly` <br/>
 `rustup default nightly`
 
+### Build/Test/Run
+(Inside project root directory)
+`cargo build`
+`cargo test`
+`cargo run`
+
+
 
 ## Implementation
 
@@ -31,7 +38,7 @@ The concepts of trait implementation, lifetime, ownership, borrowing(!), Arc/Rc/
 
 
 ### Non-functional features
-- Error-handling: resource not found, 404/500 messages
+- Error-handling
 - Documentation: Docs page opens @ root path
 - Request format validation
 

@@ -2,6 +2,7 @@
 //! and their helper functions and Rocket instance generator.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Mutex;
 
 use chrono::{DateTime, Duration};
@@ -9,21 +10,22 @@ use chrono::prelude::*;
 use rocket::fairing::AdHoc;
 use rocket::http::Status;
 use rocket::request::LenientForm;
-use rocket::{State};
+use rocket::State;
 use rocket_contrib::json::Json;
 use uuid::Uuid;
 
-use crate::models::{ApiResponse, Menu, Order, OrderQueryParams, OrderStates};
+use crate::models::{ApiResponse, Config, Menu, Order, OrderQueryParams, OrderStates, TableCount};
 
-// In-memory storage for all resources, used as ManagedState.
+// Types used by Rocket ManagedState for in-memory storage of resources.
 type OrderMap = Mutex<HashMap<String, Order>>;
 type MenuMap = Mutex<HashMap<String, Menu>>;
 
+const DEFAULT_TABLE_COUNT: u8 = 100;
 
 /// Route to POST a Menu item
 #[post("/menus", format = "json", data = "<payload>")]
 fn add_menu(payload: Json<Menu>, map: State<MenuMap>) -> ApiResponse {
-    let mut hashmap = map.lock().expect("map lock.");
+    let mut hashmap = map.lock().expect("map locked.");
     let id = Uuid::new_v4().to_string();
     let menu = Menu { id: Some(id.clone()), ..payload.0 };
     hashmap.insert(id.clone(), menu);
@@ -39,7 +41,7 @@ fn add_menu(payload: Json<Menu>, map: State<MenuMap>) -> ApiResponse {
 /// Route to GET all Menu items (we'll not implement /menus/<id> as there is no current requirement to GET a single menu item)
 #[get("/menus")]
 fn get_menus(map: State<MenuMap>) -> ApiResponse {
-    let hashmap = map.lock().unwrap();
+    let hashmap = map.lock().expect("map locked.");
     let mut menus: Vec<&Menu> = Vec::new();
     for (_, menu) in hashmap.iter() {
         menus.push(menu);
@@ -60,7 +62,7 @@ fn get_menus(map: State<MenuMap>) -> ApiResponse {
 // to add/delete menu items, and such operation (specially, delete) would be done in maintenance period.
 #[delete("/menus/<id>")]
 fn delete_menu(id: String, map: State<MenuMap>) -> ApiResponse {
-    let mut hashmap = map.lock().unwrap();
+    let mut hashmap = map.lock().expect("map locked.");
     if hashmap.contains_key(&id) {
         hashmap.remove(&id);
         ApiResponse {
@@ -74,14 +76,36 @@ fn delete_menu(id: String, map: State<MenuMap>) -> ApiResponse {
 
 /// Route to create an Order
 #[post("/orders", format = "json", data = "<payload>")]
-fn create_order(payload: Json<Order>, map: State<OrderMap>, menus: State<MenuMap>) -> ApiResponse {
-    let mut hashmap = map.lock().expect("map lock.");
-    let menuMap = menus.lock().expect("map lock.");
+fn create_order(payload: Json<Order>, orders: State<OrderMap>, menus: State<MenuMap>, tables: State<TableCount>) -> ApiResponse {
+    let mut orderMap = orders.lock().expect("map locked.");
+    let menuMap = menus.lock().expect("map locked.");
 
+    // Check configured table_count. If table_count is 0, orders cannot be placed.
+    let table_count: u8 = tables.0.load(Ordering::Relaxed);
+    if table_count < 1 {
+        return ApiResponse {
+            status: Status::ServiceUnavailable,
+            json: json!({
+                        "status": "ServiceUnavailable",
+                        "reason": "We are not accepting orders now. Please try again later."
+                    }),
+        };
+    }
+
+
+    // Check if table_id is valid
+    match payload.0.table_id.clone() {
+        val => {
+            let allowed_table_id = 1..=table_count;
+            if !allowed_table_id.contains(&val.parse::<u8>().unwrap_or(0)) {
+                return generateBadRequestResponse("Invalid table selection.");
+            }
+        }
+    }
     // Check if the menu_id is valid
     let menu = menuMap.get(&payload.0.menu_id);
     match menu {
-        None => {generateBadRequestResponse("Invalid menu selection.")}
+        None => { generateBadRequestResponse("Invalid menu selection.") }
         Some(menu) => {
             let id = Uuid::new_v4().to_string();
             let local: DateTime<Local> = Local::now();
@@ -93,7 +117,7 @@ fn create_order(payload: Json<Order>, map: State<OrderMap>, menus: State<MenuMap
                 estimated_serve_time: Some((local + Duration::minutes(i64::from(menu.preparation_time))).to_rfc2822()),
                 ..payload.0
             };
-            hashmap.insert(id.clone(), order);
+            orderMap.insert(id.clone(), order);
             ApiResponse {
                 status: Status::Created,
                 json: json!({
@@ -108,7 +132,7 @@ fn create_order(payload: Json<Order>, map: State<OrderMap>, menus: State<MenuMap
 /// Route to update an Order
 #[put("/orders/<id>", format = "json", data = "<payload>")]
 fn update_order(id: String, payload: Json<Order>, map: State<OrderMap>) -> ApiResponse {
-    let mut hashmap = map.lock().unwrap();
+    let mut hashmap = map.lock().expect("map locked.");
     let order = hashmap.get(&id);
     match order {
         None => { generateResourceNotFoundResponse() }
@@ -119,17 +143,18 @@ fn update_order(id: String, payload: Json<Order>, map: State<OrderMap>) -> ApiRe
                 return generateBadRequestResponse(
                     format!("Order {} has already been {}",
                             &id, order.state.as_ref().unwrap()).as_str()
-                )
+                );
             }
-            // If menu_id is different, reject. table_id can be changed (as if customer has moved to another table)
-            if payload.menu_id.ne(&order.menu_id) {
-                return generateBadRequestResponse("Invalid menu_id.")
-            }
+            // If menu_id is different, reject.
+            payload.menu_id.ne(&order.menu_id).then(|| return generateBadRequestResponse("Invalid menu_id."));
+            // If table_id is different, reject.
+            payload.table_id.ne(&order.table_id).then(|| return generateBadRequestResponse("Invalid table_id."));
 
             let local: DateTime<Local> = Local::now();
             let updatedOrder = Order {
                 id: Some(id.clone()),
                 //overwrite the unchangeable fields using original order field values
+                table_id: order.table_id.clone(),
                 menu_id: order.menu_id.clone(),
                 menu_name: order.menu_name.clone(),
                 create_time: order.create_time.clone(),
@@ -157,7 +182,7 @@ fn update_order(id: String, payload: Json<Order>, map: State<OrderMap>) -> ApiRe
 /// Route to get an Order
 #[get("/orders/<id>")]
 fn get_order(id: String, map: State<OrderMap>) -> ApiResponse {
-    let hashmap = map.lock().unwrap();
+    let hashmap = map.lock().expect("map locked.");
     let order = hashmap.get(&id);
     match order {
         None => { generateResourceNotFoundResponse() }
@@ -177,7 +202,7 @@ fn get_order(id: String, map: State<OrderMap>) -> ApiResponse {
 /// `table_id=<string>`, `menu_id=<string>`
 #[get("/orders?<params..>")]
 fn get_orders(params: Option<LenientForm<OrderQueryParams>>, map: State<OrderMap>) -> ApiResponse {
-    let hashmap = map.lock().unwrap();
+    let hashmap = map.lock().expect("map locked.");
     let orders: Vec<&Order> = hashmap.iter()
         .map(|(_, order)| order)
         .filter(|order| matchesParams(params.as_ref(), order))
@@ -193,6 +218,20 @@ fn get_orders(params: Option<LenientForm<OrderQueryParams>>, map: State<OrderMap
 }
 
 // For consistency, Orders should not be deleted. They can be marked CANCELLED.
+
+/// Route to update configuration (idempotent operation)
+#[put("/config", format = "json", data = "<payload>")]
+fn update_config(payload: Json<Config>, tables: State<TableCount>) -> ApiResponse {
+    // For now, we have only one config.
+    tables.inner().0.store(payload.0.table_count, Ordering::Relaxed);
+    ApiResponse {
+        status: Status::Ok,
+        json: json!({
+              "status": "Ok"
+              }),
+    }
+}
+
 
 #[catch(400)]
 /// Catcher for `400: Bad Request`
@@ -235,13 +274,14 @@ fn server_error() -> ApiResponse {
 pub fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .mount("/", routes![
-            add_menu, get_menus, delete_menu,
+            update_config, add_menu, get_menus, delete_menu,
             create_order, update_order, get_order, get_orders
         ])
         .register(catchers![bad_request, not_found, unprocessable, server_error])
         .manage(Mutex::new(HashMap::<String, Order>::new()))
         .manage(Mutex::new(HashMap::<String, Menu>::new()))
-        .attach(AdHoc::on_launch("Launch Printer", |_| {
+        .manage(TableCount(AtomicU8::new(DEFAULT_TABLE_COUNT)))
+        .attach(AdHoc::on_launch("Logger", |_| {
             println!("Rocket is about to launch!");
         }))
 }
@@ -280,6 +320,9 @@ fn matchesParams(params: Option<&LenientForm<OrderQueryParams>>, order: &Order) 
             }
             if let Some(menu_id) = &params.menu_id {
                 isMatch &= order.menu_id.eq(menu_id);
+            }
+            if let Some(state) = &params.state {
+                isMatch &= order.state.as_ref().unwrap_or(&"INVALID".to_string()).eq(state);
             }
             isMatch
         }
