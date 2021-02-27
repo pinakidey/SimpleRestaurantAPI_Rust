@@ -1,11 +1,10 @@
-//! A worker/client which makes multi-threaded calls to the business logic functions (which in turn calls the APIs)
-//! This file is used for simulating a set of clients, and thus have no tests for itself or error handling.
+//! A worker/client which uses multiple threads to call the business logic functions (which in turn call the APIs)
+//! This file is used just for simulating a set of clients, and thus have no tests for itself or much of error handling.
 
 use std::thread;
 
 use chrono::{DateTime, Local};
 use rand::prelude::*;
-//use rayon::prelude::*;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -13,19 +12,15 @@ use serde_json::Value;
 use crate::logic::*;
 use crate::models::{Menu, Menus, Orders};
 
-//use threadpool::ThreadPool;
-
-//use futures::executor::block_on;
-
-const THREAD_COUNT: usize = 10;
-const TABLE_COUNT: u8 = 10;
+const THREAD_COUNT: usize = 2;
+const TABLE_COUNT: u8 = 100;
 
 const CREATE_ORDER_PAYLOAD: &str =
     "{
             \"table_id\": \"TABLE_ID_PLACEHOLDER\",
             \"menu_id\": \"MENU_ID_PLACEHOLDER\",
             \"quantity\": 1
-        }";
+    }";
 const SET_CONFIG_PAYLOAD: &str =
     "{
             \"table_count\": TABLE_COUNT_PLACEHOLDER
@@ -38,36 +33,6 @@ struct Response {
 }
 
 pub(crate) async fn run() {
-    /*let client: Client = Client::builder()
-        .timeout(Duration::from_secs(5))
-        .build().unwrap();*/
-
-    // Tried with rayon and threadpool, but faced lots of issues in moving client in scope
-
-    /*let pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(THREAD_COUNT)
-        .build()
-        .unwrap();*/
-
-    /*pool.scope(move |s| async move {
-        for _ in 1..=pool.current_num_threads() {
-            s.spawn(move |s| async move {execute(&client)}).join().unwrap().await;
-        }
-    });*/
-
-    /*for _ in 1..=pool.current_num_threads() {
-        pool.spawn(|| async {execute().await})
-    }*/
-
-    /*let pool = ThreadPool::new(THREAD_COUNT);
-    for _ in 1..=THREAD_COUNT {
-        pool.execute(|| {
-            execute();
-        });
-    }
-
-    pool.join();*/
-
     async fn execute() {
         let client: Client = Client::new();
 
@@ -140,10 +105,10 @@ pub(crate) async fn run() {
         .into_iter()
         .map(|i| {
             println!("Submitted Thread {}", i);
-            thread::spawn(move || execute())
+            thread::spawn(move || {execute()})
         })
         .collect::<Vec<_>>();
-    println!("waiting ...");
+    println!("Waiting ...");
     for handle in handles {
         handle.join().unwrap().await;
     }

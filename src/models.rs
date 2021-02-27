@@ -1,3 +1,5 @@
+//! This file contains all the models. (Don't re-format, messes-up comment positions)
+
 use rocket::{Request, response, Response};
 use rocket::http::{ContentType, Status};
 use rocket::response::Responder;

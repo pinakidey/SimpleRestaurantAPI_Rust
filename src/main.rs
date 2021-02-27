@@ -1,11 +1,14 @@
+//! Application entrypoint. Runs Rocket, loads menu and runs worker threads.
+
 #![feature(proc_macro_hygiene, decl_macro, thread_id_value)]
 #![allow(non_snake_case)]
 
-#[macro_use] extern crate rocket;
-#[macro_use] extern crate rocket_contrib;
+#[macro_use]
+extern crate rocket;
+#[macro_use]
+extern crate rocket_contrib;
 extern crate serde;
 extern crate serde_json;
-extern crate rayon;
 
 use std::error::Error;
 use std::fs::File;
@@ -25,7 +28,7 @@ mod logic;
 
 /// Loads initial menus into managed state via API
 async fn load_menu() -> Result<(), Box<dyn Error>> {
-    println!("Reading File...");
+    println!("Reading Menus from File...");
     let file = File::open(Path::new("src/menu.json")).expect("File not found");
     let menus: Vec<Menu> = serde_json::from_reader(file)
         .expect("Error reading/parsing file.");
@@ -33,13 +36,12 @@ async fn load_menu() -> Result<(), Box<dyn Error>> {
     // Use reqwest client to make remote API call
     let client = reqwest::Client::new();
     for menu in menus.iter() {
-        println!("{:#?}", menu);
-        let res = client.post("http://localhost:8000/menus")
+        client.post("http://localhost:8000/menus")
             .json(&menu)
             .send()
             .await?;
-        println!("{:?}", res.status());
     }
+    println!("ALL MENUS LOADED!");
     Ok(())
 }
 

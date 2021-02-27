@@ -199,7 +199,7 @@ fn get_order(id: String, map: State<OrderMap>) -> ApiResponse {
 }
 
 /// Route to get all Orders. Supports the following query-params to filter result-set:
-/// `table_id=<string>`, `menu_id=<string>`
+/// `table_id=<string>`, `menu_id=<string>`, `state=<"ORDERED"|"SERVED"|"CANCELLED"|"COOKING">`
 #[get("/orders?<params..>")]
 fn get_orders(params: Option<LenientForm<OrderQueryParams>>, map: State<OrderMap>) -> ApiResponse {
     let hashmap = map.lock().expect("map locked.");
@@ -257,7 +257,6 @@ fn delete_order(id: String, map: State<OrderMap>) -> ApiResponse {
         }
     }
 }
-
 
 
 /// Route to update configuration (idempotent operation)
