@@ -12,6 +12,7 @@ use rocket::http::Status;
 use rocket::request::LenientForm;
 use rocket::State;
 use rocket_contrib::json::Json;
+use rocket_contrib::serve::{StaticFiles};
 use uuid::Uuid;
 
 use crate::models::{ApiResponse, Config, Menu, Order, OrderQueryParams, OrderStates, TableCount};
@@ -317,6 +318,7 @@ pub fn rocket() -> rocket::Rocket {
             update_config, add_menu, get_menus, delete_menu,
             create_order, update_order, get_order, get_orders, delete_order
         ])
+        .mount("/", StaticFiles::from("docs/doc"))
         .register(catchers![bad_request, not_found, unprocessable, server_error])
         .manage(Mutex::new(HashMap::<String, Order>::new()))
         .manage(Mutex::new(HashMap::<String, Menu>::new()))

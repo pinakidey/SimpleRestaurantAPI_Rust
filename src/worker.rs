@@ -12,7 +12,7 @@ use serde_json::Value;
 use crate::logic::*;
 use crate::models::{Menu, Menus, Orders};
 
-const THREAD_COUNT: usize = 2;
+const THREAD_COUNT: usize = 10;
 const TABLE_COUNT: u8 = 100;
 
 const CREATE_ORDER_PAYLOAD: &str =
@@ -32,7 +32,10 @@ struct Response {
     status: String,
 }
 
+/// Spawns multiple threads to run clients
 pub(crate) async fn run() {
+
+    /// Executes a sequence of CRUD operations
     async fn execute() {
         let client: Client = Client::new();
 

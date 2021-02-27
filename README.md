@@ -9,6 +9,9 @@ I found Rust very interesting, it made me think a lot more about WHY, at every s
 The concepts of trait implementation, lifetime, ownership, borrowing(!), Arc/Rc/RfCell/Mutex etc. are still `volatile` in my memory, 
 but I have tried my best to put up something (with sufficient tests), in a limited time.
 
+There would surely be places where snippets could be a bit more concise and 'functional' if I was more accustomed to Rust's huge repertoire of higher-order functions.
+But, I'm sure to have a grasp on those in time, just like any other languages. 
+
 ## Assumptions
 - Since the problem statement doesn't mention data needs to be stored `on-disk` persistently, 
   I am assuming an on-memory db, or a **thread-safe data-structure** is fine.
@@ -21,23 +24,29 @@ Please check the [API_SPEC.md](API_SPEC.md) for API specification.
 
 ### Install Rust nightly for Async support and set default
 
-`rustup toolchain install nightly` <br/>
+>`rustup toolchain install nightly` <br/>
 `rustup default nightly`
 
 ### Build/Test/Run
 (Inside project root directory)
-`cargo build` <br/>
+>`cargo build` <br/>
 `cargo test`  <br/>
-`cargo run`
+`cargo run`   <br/><br/>
+(To create docs, run)
+`cargo doc --no-deps --target-dir docs`
 
 ### Test API using POSTMAN
 
-- Load the POSTMAN collection from [scripts/SimpleRestaurantAPI.postman_collection.json] in your POSTMAN client using `import`. 
+- Load the POSTMAN collection from [here](scripts/SimpleRestaurantAPI.postman_collection.json) in your POSTMAN client using `import`. 
 - Make sure API is running on `localhost:8000`.
 - Send a `GET /menus` request to load menus. The postman collection uses environment variable.
 - Send a `POST /orders` request to create an order.
 - Then try other Requests as you like.
 - `PUT /config` sets table_count. If you see `Invalid table selection.` error in `POST /orders` request, use this to set `table_count`.
+
+### Multi-threaded Clients
+`worker.rs` uses 10 threads to make parallel async API calls with randomly selected data.
+The clients are started automatically at application start. Check `Terminal/IDE` logs to verify output.  
 
 ## Implementation
 
@@ -75,12 +84,12 @@ Use `get_remaining_orders()` to get all remaining orders. Calculate time-to-serv
 
 ### Non-functional features
 - Error-handling
-- Documentation: Docs page opens @ root path
+- Documentation: Docs pages are mounted on http://localhost:8000/simple_restaurant_api/ (if you had run `cargo doc`)
 - Request format validation
 
 ### Things not implemented / limitation
 - Any type of security features
-- API support for Content-Type other than `Content-Type: application/json`
+- API support for `Content-Type` other than `application/json`
 - While creating resources, although using UUID as `id`,
   have not implemented checks for rare but possible id-collision.
   When using a real DB such occurrences will throw an error from the DB

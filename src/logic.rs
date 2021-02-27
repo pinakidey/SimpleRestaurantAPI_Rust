@@ -1,5 +1,5 @@
 //! This file contains functions implementing the business logics
-//! as given here https://github.com/paidy/interview/blob/master/SimpleRestaurantApi.md
+//! as given [here](<https://github.com/paidy/interview/blob/master/SimpleRestaurantApi.md>)
 
 use std::error::Error;
 use reqwest::Client;

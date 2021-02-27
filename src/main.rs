@@ -1,6 +1,6 @@
 //! Application entrypoint. Runs Rocket, loads menu and runs worker threads.
 
-#![feature(proc_macro_hygiene, decl_macro, thread_id_value)]
+#![feature(proc_macro_hygiene, decl_macro, thread_id_value, intra_doc_pointers)]
 #![allow(non_snake_case)]
 
 #[macro_use]
@@ -53,8 +53,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     // Load menu data.
-    let result = load_menu().await;
-    result.expect("FAILED TO LOAD INITIAL DATA. SOME FEATURES MAY NOT WORK.");
+    load_menu().await.expect("FAILED TO LOAD INITIAL DATA. SOME FEATURES MAY NOT WORK.");
 
     // To disable worker client, comment out the line below
     worker::run().await;
