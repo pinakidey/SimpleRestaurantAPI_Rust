@@ -102,6 +102,14 @@ Response format (example)
 ```
 
 > #### DELETE /menus/:id : deletes a menu item specified by `id`
+Response format (example)
+
+```json
+{
+  "status": "Accepted"
+}
+```
+
 
 ### /orders
 
@@ -147,7 +155,7 @@ Response format (example)
 }
 ```
 
->> Possible values of `state` are `ORDERED` (which is set by default while creating orders), 
+> Possible values of `state` are `ORDERED` (which is set by default while creating orders), 
 > `SERVED` (means the order has been served; updating `state` to `SERVED` also updates `served_time`),
 > `CANCELLED` (means the order has been cancelled), `COOKING` (means the order is under preparation). <br/>
 > 
@@ -189,8 +197,8 @@ Response format (example)
 }
 ```
 
->> Results can be filtered using query parameters.
-> `?table_id=<string>`, `?menu_id=<string>`, `?state=<"ORDERED"|"SERVED"|"CANCELLED"|"COOKING">`
+> Results can be filtered using following query parameters. <br/>
+> `?table_id=<string>`, `?menu_id=<string>`, `?state=<"ORDERED"|"SERVED"|"CANCELLED"|"COOKING">` <br/>
 > Use `&` to combine multiple query parameters. (e.g. `?table_id="44"&state="ORDERED"`)
 
 > #### **GET /orders/:id : fetches details of one order specified by `id`**
