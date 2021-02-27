@@ -201,7 +201,7 @@ Response format (example)
 > `?table_id=<string>`, `?menu_id=<string>`, `?state=<"ORDERED"|"SERVED"|"CANCELLED"|"COOKING">` <br/>
 > Use `&` to combine multiple query parameters. (e.g. `?table_id="44"&state="ORDERED"`)
 
-> #### **GET /orders/:id : fetches details of one order specified by `id`**
+> #### GET /orders/:id : fetches details of one order specified by `id`
 
 Response format (example)
 
@@ -223,7 +223,7 @@ Response format (example)
 }
 ```
 
-> #### **DELETE /orders/:id : deletes an order specified by `id`**
+> #### DELETE /orders/:id : deletes an order specified by `id`
 
 Response format (example)
 
