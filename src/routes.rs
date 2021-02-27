@@ -217,7 +217,48 @@ fn get_orders(params: Option<LenientForm<OrderQueryParams>>, map: State<OrderMap
     }
 }
 
-// For consistency, Orders should not be deleted. They can be marked CANCELLED.
+// For consistency, Orders should not be deleted. So, delete_order() sets the order.state to CANCELLED.
+#[delete("/orders/<id>")]
+fn delete_order(id: String, map: State<OrderMap>) -> ApiResponse {
+    let mut hashmap = map.lock().expect("map locked.");
+    let order = hashmap.get(&id);
+    match order {
+        None => { generateResourceNotFoundResponse() }
+        Some(order) => {
+            // Order can only be deleted if its state is ORDERED/
+            if OrderStates::ORDERED.to_string().ne(order.state.as_ref().unwrap()) {
+                return generateBadRequestResponse(
+                    format!("Order {} has already been {}",
+                            &id, order.state.as_ref().unwrap()).as_str()
+                );
+            }
+            let local: DateTime<Local> = Local::now();
+            let updatedOrder = Order {
+                id: Some(id.clone()),
+                //overwrite the unchangeable fields using original order field values
+                table_id: order.table_id.clone(),
+                menu_id: order.menu_id.clone(),
+                menu_name: order.menu_name.clone(),
+                create_time: order.create_time.clone(),
+                update_time: Some(local.to_rfc2822()),
+                state: Some(OrderStates::CANCELLED.to_string()),
+                served_time: order.served_time.clone(),
+                quantity: order.quantity.clone(),
+                estimated_serve_time: order.estimated_serve_time.clone(),
+            };
+            hashmap.insert(id.clone(), updatedOrder);
+            ApiResponse {
+                status: Status::Accepted,
+                json: json!({
+                        "status": "Accepted",
+                        "id": id
+                    }),
+            }
+        }
+    }
+}
+
+
 
 /// Route to update configuration (idempotent operation)
 #[put("/config", format = "json", data = "<payload>")]
@@ -275,7 +316,7 @@ pub fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .mount("/", routes![
             update_config, add_menu, get_menus, delete_menu,
-            create_order, update_order, get_order, get_orders
+            create_order, update_order, get_order, get_orders, delete_order
         ])
         .register(catchers![bad_request, not_found, unprocessable, server_error])
         .manage(Mutex::new(HashMap::<String, Order>::new()))

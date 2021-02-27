@@ -1,10 +1,11 @@
-#![feature(proc_macro_hygiene, decl_macro, const_fn)]
+#![feature(proc_macro_hygiene, decl_macro, thread_id_value)]
 #![allow(non_snake_case)]
 
 #[macro_use] extern crate rocket;
 #[macro_use] extern crate rocket_contrib;
 extern crate serde;
 extern crate serde_json;
+extern crate rayon;
 
 use std::error::Error;
 use std::fs::File;
@@ -53,6 +54,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let result = load_menu().await;
     result.expect("FAILED TO LOAD INITIAL DATA. SOME FEATURES MAY NOT WORK.");
 
+    // To disable worker client, comment out the line below
     worker::run().await;
 
     t.join().expect("Couldn't join on the associated thread");

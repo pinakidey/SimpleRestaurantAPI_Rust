@@ -24,13 +24,27 @@ pub(crate) struct Order {
     pub(crate) served_time: Option<String>,                // updatable
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 /// Model for individual menu item
 pub(crate) struct Menu {
     pub(crate) id: Option<String>,
     pub(crate) status: String,
     pub(crate) name: String,
     pub(crate) preparation_time: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+/// Model for an array of menu items
+pub(crate) struct Menus {
+    pub(crate) count: u8,
+    pub(crate) menus: Vec<Menu>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+/// Model for an array of orders
+pub(crate) struct Orders {
+    pub(crate) count: u8,
+    pub(crate) orders: Vec<Order>
 }
 
 /// A thread-safe struct to save Table count

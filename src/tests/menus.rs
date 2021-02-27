@@ -65,7 +65,7 @@ mod menus {
         let client = Client::new(rocket()).unwrap();
 
         // Tests initial state
-        let mut res = client.get("/menus").header(ContentType::JSON).dispatch();
+        let mut res = client.get("/menus").dispatch();
         assert_eq!(res.status(), Status::Ok);
         let body = res.body_string().unwrap();
         println!("{:?}", body);
@@ -83,18 +83,18 @@ mod menus {
         println!("Created resource: id = {:?}", parsed_res.id);
 
         // Get all menus and check id is present in the response body
-        res = client.get("/menus").header(ContentType::JSON).dispatch();
+        res = client.get("/menus").dispatch();
         assert_eq!(res.status(), Status::Ok);
         let body = res.body_string().unwrap();
         println!("{:?}", body);
         assert!(body.contains(&parsed_res.id));
 
         // Delete the previously created menu item
-        res = client.delete(format!("/menus/{}", &parsed_res.id)).header(ContentType::JSON).dispatch();
+        res = client.delete(format!("/menus/{}", &parsed_res.id)).dispatch();
         assert_eq!(res.status(), Status::Accepted);
 
         // Verify that the item got deleted successfully
-        res = client.get("/menus").header(ContentType::JSON).dispatch();
+        res = client.get("/menus").dispatch();
         assert_eq!(res.status(), Status::Ok);
         let body = res.body_string().unwrap();
         println!("{:?}", body);
@@ -108,7 +108,7 @@ mod menus {
 
         // Negative test
         let client = Client::new(rocket()).unwrap();
-        let mut res = client.delete(format!("/menus/{}", 1)).header(ContentType::JSON).dispatch();
+        let mut res = client.delete(format!("/menus/{}", 1)).dispatch();
         println!("{:?}", res.body_string().unwrap());
         assert_eq!(res.status(), Status::NotFound);
     }

@@ -162,7 +162,7 @@ mod orders {
         /* Test get_order() */
 
         // Get order by id and check if order_id is present in the response body
-        res = client.get(format!("/orders/{}", order_id)).header(ContentType::JSON).dispatch();
+        res = client.get(format!("/orders/{}", order_id)).dispatch();
         assert_eq!(res.status(), Status::Ok);
         let body = res.body_string().unwrap();
         println!("{:#?}", body);
@@ -171,7 +171,7 @@ mod orders {
         /* Test get_orders() */
 
         // Get all orders and check if order_id is present in the response body
-        res = client.get("/orders").header(ContentType::JSON).dispatch();
+        res = client.get("/orders").dispatch();
         assert_eq!(res.status(), Status::Ok);
         let body = res.body_string().unwrap();
         println!("{:#?}", body);
@@ -186,28 +186,28 @@ mod orders {
         assert_eq!(res.status(), Status::Created);
 
         // GET all orders
-        res = client.get("/orders").header(ContentType::JSON).dispatch();
+        res = client.get("/orders").dispatch();
         assert_eq!(res.status(), Status::Ok);
         let body = res.body_string().unwrap();
         println!("{:#?}", body);
         assert!(body.contains("\"count\":2"));
 
         // Now GET with query-param
-        res = client.get("/orders?table_id=2").header(ContentType::JSON).dispatch();
+        res = client.get("/orders?table_id=2").dispatch();
         assert_eq!(res.status(), Status::Ok);
         let body = res.body_string().unwrap();
         println!("{:#?}", body);
         assert!(body.contains("\"count\":1"));
 
         // Filter with valid menu_id
-        res = client.get(format!("/orders?menu_id={}", menu_id)).header(ContentType::JSON).dispatch();
+        res = client.get(format!("/orders?menu_id={}", menu_id)).dispatch();
         assert_eq!(res.status(), Status::Ok);
         let body = res.body_string().unwrap();
         println!("{:#?}", body);
         assert!(body.contains("\"count\":2"));
 
         // Filter with invalid menu_id
-        res = client.get(format!("/orders?menu_id={}", "INVALID")).header(ContentType::JSON).dispatch();
+        res = client.get(format!("/orders?menu_id={}", "INVALID")).dispatch();
         assert_eq!(res.status(), Status::Ok);
         let body = res.body_string().unwrap();
         println!("{:#?}", body);
@@ -236,14 +236,14 @@ mod orders {
         assert!(body.contains(&order_id));
 
         // Filter with state
-        res = client.get(format!("/orders?state={}", "SERVED")).header(ContentType::JSON).dispatch();
+        res = client.get(format!("/orders?state={}", "SERVED")).dispatch();
         assert_eq!(res.status(), Status::Ok);
         let body = res.body_string().unwrap();
         println!("{:#?}", body);
         assert!(body.contains("\"count\":1"));
 
         // Verify served_time is not null
-        res = client.get(format!("/orders/{}", order_id)).header(ContentType::JSON).dispatch();
+        res = client.get(format!("/orders/{}", order_id)).dispatch();
         assert_eq!(res.status(), Status::Ok);
         let body = res.body_string().unwrap();
         println!("{:#?}", body);
@@ -270,5 +270,30 @@ mod orders {
             .body(INVALID_UPDATE_ORDER_PAYLOAD_2.replace("MENU_ID_PLACEHOLDER", menu_id.as_str()))
             .dispatch();
         assert_eq!(res.status(), Status::BadRequest);
+
+        /* Test delete_order() */
+        // First create an order
+        res = client.post("/orders")
+            .header(ContentType::JSON)
+            .body(VALID_CREATE_ORDER_PAYLOAD_1.replace("MENU_ID_PLACEHOLDER", menu_id.as_str()))
+            .dispatch();
+        assert_eq!(res.status(), Status::Created);
+        let parsed_res: Response = serde_json::from_str(res.body_string().unwrap().as_str()).unwrap();
+        let order_id = parsed_res.id.clone();
+        assert!(!order_id.is_empty());
+        println!("{}", order_id);
+
+        // Delete an order with order_id
+        res = client.delete(format!("/orders/{}", order_id)).dispatch();
+        assert_eq!(res.status(), Status::Accepted);
+
+        // Try to delete the same resource once again
+        res = client.delete(format!("/orders/{}", order_id)).dispatch();
+        assert_eq!(res.status(), Status::BadRequest);
+
+        // Try to delete a non existent order
+        res = client.delete("/orders/1").dispatch();
+        assert_eq!(res.status(), Status::NotFound);
+
     }
 }

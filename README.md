@@ -1,7 +1,7 @@
 # Preface
 
-I started learning Rust last week. I finished a course on Udemy on Rust (3-4days), 
-read the rust-docs (in part) and Rocket docs (in full).
+I started learning Rust last week. I finished a [course](https://github.com/pinakidey/certificates/blob/main/The_Rust_Programming_Language.jpg) on Udemy on Rust (3-4days), 
+read the rust-docs (in part), Rocket docs (in full) and docs of various other crates as required.
 
 This is my first project in Rust. 
 I found Rust very interesting, it made me think a lot more about WHY, at every step, instead of HOW and reminds me of C++ days.
@@ -52,6 +52,7 @@ Please check the API_SPEC.md for API specification.
   and API-layer can retry with a new UUID.
   
 ### Scope of Improvements
-- Use a Database to persist data.
+- Use a Database to persist data on disk.
 - Use Diesel for ORM.
 - Add authentication.
+- Add CORS support (using `rocket_cors` or fairing). 
