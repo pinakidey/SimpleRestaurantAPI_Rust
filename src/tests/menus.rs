@@ -1,31 +1,31 @@
 //! Tests for functions implementing the /menus API
 mod menus {
     extern crate serde_json;
+
+    use rocket::http::{ContentType, Status};
+    use rocket::local::Client;
+
+    use crate::models::Response;
     use crate::rocket;
-    use rocket::local::{Client};
-    use rocket::http::{Status, ContentType};
-    use serde::{Deserialize, Serialize};
-    use crate::routes::{rocket};
+    use crate::routes::rocket;
 
-    const VALID_MENU_PAYLOAD: &str = "{
-    \"status\": \"active\",
-    \"name\": \"Hors-d'oeuvre / Appetiser\",
-    \"preparation_time\": 10
-}";
-    const INVALID_MENU_PAYLOAD_1: &str = "{
-    \"status\": \"active\",
-    \"preparation_time\": 10
-}";
-    const INVALID_MENU_PAYLOAD_2: &str = "{
-    \"status\": \"active\",
-    \"name\": \"Hors-d'oeuvre / Appetiser\"
-}";
+    const VALID_MENU_PAYLOAD: &str =
+        "{
+            \"status\": \"active\",
+            \"name\": \"Hors-d'oeuvre / Appetiser\",
+            \"preparation_time\": 10
+        }";
+    const INVALID_MENU_PAYLOAD_1: &str =
+        "{
+            \"status\": \"active\",
+            \"preparation_time\": 10
+        }";
+    const INVALID_MENU_PAYLOAD_2: &str =
+        "{
+            \"status\": \"active\",
+            \"name\": \"Hors-d'oeuvre / Appetiser\"
+        }";
 
-    #[derive(Serialize, Deserialize, Debug)]
-    struct Response {
-        id: String,
-        status: String
-    }
 
     #[test]
     /// Test add_menu()
@@ -99,6 +99,10 @@ mod menus {
         let body = res.body_string().unwrap();
         println!("{:?}", body);
         assert!(!body.contains(&parsed_res.id));
+
+        // Try deleting the same resource once again
+        res = client.delete(format!("/menus/{}", &parsed_res.id)).dispatch();
+        assert_eq!(res.status(), Status::NotFound);
     }
 
     #[test]
@@ -107,6 +111,7 @@ mod menus {
         // Positive test is performed inside test_get_menus()
 
         // Negative test
+        // Try deleting non existent menu
         let client = Client::new(rocket()).unwrap();
         let mut res = client.delete(format!("/menus/{}", 1)).dispatch();
         println!("{:?}", res.body_string().unwrap());

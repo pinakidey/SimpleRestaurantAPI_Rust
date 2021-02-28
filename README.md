@@ -32,8 +32,15 @@ Please check the [API_SPEC.md](API_SPEC.md) for API specification.
 >`cargo build` <br/>
 `cargo test`  <br/>
 `cargo run`   <br/><br/>
-(To create docs, run)
+(Run tests that require application to be running)<br/>
+`cargo test -- --ignored` <br/>
+(To create docs, run) <br/>
 `cargo doc --no-deps --target-dir docs`
+
+> Note: After `cargo run`, if there is an error similar to `"An established connection was aborted by the software in your host machine."`,
+> please run the application using IDE (e.g. IntelliJ IDEA).
+> <br/>To know more about this error, see [here](https://github.com/SergioBenitez/Rocket/issues/209).
+> <br/>A quick solution might be setting `Rocket.toml` > `[development]` > `address` to `"127.0.0.1"`
 
 ### Test API using POSTMAN
 

@@ -6,11 +6,10 @@ use std::thread;
 use chrono::{DateTime, Local};
 use rand::prelude::*;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::logic::*;
-use crate::models::{Menu, Menus, Orders};
+use crate::models::{Menu, Menus, Orders, Response};
 
 const THREAD_COUNT: usize = 10;
 const TABLE_COUNT: u8 = 100;
@@ -25,12 +24,6 @@ const SET_CONFIG_PAYLOAD: &str =
     "{
             \"table_count\": TABLE_COUNT_PLACEHOLDER
     }";
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Response {
-    id: String,
-    status: String,
-}
 
 /// Spawns multiple threads to run clients
 pub(crate) async fn run() {
@@ -104,6 +97,7 @@ pub(crate) async fn run() {
             });
     }
 
+    // Spawn threads, save handles
     let handles = (1..=THREAD_COUNT)
         .into_iter()
         .map(|i| {

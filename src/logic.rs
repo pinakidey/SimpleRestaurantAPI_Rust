@@ -13,7 +13,7 @@ pub(crate) async fn fetch_menus(client: &Client) -> Result<String, Box<dyn Error
         .await?
         .text()
         .await?;
-    println!("{:#?}", res);
+    //println!("{:#?}", res);
     Ok(res)
 }
 

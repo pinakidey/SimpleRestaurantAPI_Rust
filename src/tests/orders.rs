@@ -4,8 +4,8 @@ mod orders {
 
     use rocket::http::{ContentType, Status};
     use rocket::local::Client;
-    use serde::{Deserialize, Serialize};
 
+    use crate::models::Response;
     use crate::rocket;
     use crate::routes::rocket;
 
@@ -79,13 +79,6 @@ mod orders {
             \"menu_id\": \"MENU_ID_PLACEHOLDER\",
             \"quantity\": 1
         }";
-
-
-    #[derive(Serialize, Deserialize, Debug)]
-    struct Response {
-        id: String,
-        status: String,
-    }
 
     #[test]
     /// Test /orders API
@@ -235,6 +228,11 @@ mod orders {
         println!("{:#?}", body);
         assert!(body.contains(&order_id));
 
+        // (We will perform a quick Negative test of delete_order() here)
+        // Try to delete an order which is already SERVED
+        res = client.delete(format!("/orders/{}", order_id)).dispatch();
+        assert_eq!(res.status(), Status::BadRequest);
+
         // Filter with state
         res = client.get(format!("/orders?state={}", "SERVED")).dispatch();
         assert_eq!(res.status(), Status::Ok);
@@ -294,6 +292,5 @@ mod orders {
         // Try to delete a non existent order
         res = client.delete("/orders/1").dispatch();
         assert_eq!(res.status(), Status::NotFound);
-
     }
 }

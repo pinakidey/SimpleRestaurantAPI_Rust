@@ -12,7 +12,7 @@ use rocket::http::Status;
 use rocket::request::LenientForm;
 use rocket::State;
 use rocket_contrib::json::Json;
-use rocket_contrib::serve::{StaticFiles};
+use rocket_contrib::serve::StaticFiles;
 use uuid::Uuid;
 
 use crate::models::{ApiResponse, Config, Menu, Order, OrderQueryParams, OrderStates, TableCount};
@@ -43,10 +43,7 @@ fn add_menu(payload: Json<Menu>, map: State<MenuMap>) -> ApiResponse {
 #[get("/menus")]
 fn get_menus(map: State<MenuMap>) -> ApiResponse {
     let hashmap = map.lock().expect("map locked.");
-    let mut menus: Vec<&Menu> = Vec::new();
-    for (_, menu) in hashmap.iter() {
-        menus.push(menu);
-    }
+    let menus: Vec<&Menu> = hashmap.iter().map(|(_, menu)| menu).collect();
     ApiResponse {
         status: Status::Ok,
         json: json!({
@@ -64,15 +61,17 @@ fn get_menus(map: State<MenuMap>) -> ApiResponse {
 #[delete("/menus/<id>")]
 fn delete_menu(id: String, map: State<MenuMap>) -> ApiResponse {
     let mut hashmap = map.lock().expect("map locked.");
-    if hashmap.contains_key(&id) {
-        hashmap.remove(&id);
-        ApiResponse {
-            status: Status::Accepted,
-            json: json!({
+    match hashmap.remove(&id) {
+        None => {generateResourceNotFoundResponse()}
+        Some(_) => {
+            ApiResponse {
+                status: Status::Accepted,
+                json: json!({
                     "status": "Accepted"
                 }),
+            }
         }
-    } else { generateResourceNotFoundResponse() }
+    }
 }
 
 /// Route to create an Order
@@ -81,7 +80,7 @@ fn create_order(payload: Json<Order>, orders: State<OrderMap>, menus: State<Menu
     let mut orderMap = orders.lock().expect("map locked.");
     let menuMap = menus.lock().expect("map locked.");
 
-    // Check configured table_count. If table_count is 0, orders cannot be placed.
+    // Check configured table_count. If table_count is < 1, orders cannot be placed.
     let table_count: u8 = tables.0.load(Ordering::Relaxed);
     if table_count < 1 {
         return ApiResponse {
@@ -93,17 +92,16 @@ fn create_order(payload: Json<Order>, orders: State<OrderMap>, menus: State<Menu
         };
     }
 
-
     // Check if table_id is valid
     match payload.0.table_id.clone() {
         val => {
-            let allowed_table_id = 1..=table_count;
-            if !allowed_table_id.contains(&val.parse::<u8>().unwrap_or(0)) {
+            if !(1..=table_count).contains(&val.parse::<u8>().unwrap_or(0)) {
                 return generateBadRequestResponse("Invalid table selection.");
             }
         }
     }
-    // Check if the menu_id is valid
+
+    // Check if the menu_id is valid. If valid create order.
     let menu = menuMap.get(&payload.0.menu_id);
     match menu {
         None => { generateBadRequestResponse("Invalid menu selection.") }
@@ -134,8 +132,7 @@ fn create_order(payload: Json<Order>, orders: State<OrderMap>, menus: State<Menu
 #[put("/orders/<id>", format = "json", data = "<payload>")]
 fn update_order(id: String, payload: Json<Order>, map: State<OrderMap>) -> ApiResponse {
     let mut hashmap = map.lock().expect("map locked.");
-    let order = hashmap.get(&id);
-    match order {
+    match hashmap.get(&id) {
         None => { generateResourceNotFoundResponse() }
         Some(order) => {
             // If order has already been served/cancelled reject update request
@@ -151,24 +148,19 @@ fn update_order(id: String, payload: Json<Order>, map: State<OrderMap>) -> ApiRe
             // If table_id is different, reject.
             payload.table_id.ne(&order.table_id).then(|| return generateBadRequestResponse("Invalid table_id."));
 
-            let local: DateTime<Local> = Local::now();
-            let updatedOrder = Order {
-                id: Some(id.clone()),
-                //overwrite the unchangeable fields using original order field values
-                table_id: order.table_id.clone(),
-                menu_id: order.menu_id.clone(),
-                menu_name: order.menu_name.clone(),
-                create_time: order.create_time.clone(),
-                update_time: Some(local.to_rfc2822()),
-                state: payload.state.as_ref()
-                    .map(|s| OrderStates::get_as_array().contains(s))
-                    .and(payload.state.clone()).or(order.state.clone()),
-                served_time: payload.state.as_ref()
-                    .map(|s| s.eq(&OrderStates::SERVED.to_string()))
-                    .and(Some(local.to_rfc2822())),
-                ..payload.0
-            };
+            // Create a new Order instance from `order` and set the updated values
+            let mut updatedOrder: Order = Order::create_from(order);
+            updatedOrder.update_time = Some(Local::now().to_rfc2822());
+            updatedOrder.state = payload.state.as_ref()
+                .map(|s| OrderStates::get_as_array().contains(s))
+                .and(payload.state.clone()).or(order.state.clone());
+            updatedOrder.served_time = payload.state.as_ref()
+                .map(|s| s.eq(&OrderStates::SERVED.to_string()))
+                .and(Some(Local::now().to_rfc2822()));
+
+            // Save
             hashmap.insert(id.clone(), updatedOrder);
+            // Response
             ApiResponse {
                 status: Status::Ok,
                 json: json!({
@@ -184,8 +176,7 @@ fn update_order(id: String, payload: Json<Order>, map: State<OrderMap>) -> ApiRe
 #[get("/orders/<id>")]
 fn get_order(id: String, map: State<OrderMap>) -> ApiResponse {
     let hashmap = map.lock().expect("map locked.");
-    let order = hashmap.get(&id);
-    match order {
+    match hashmap.get(&id) {
         None => { generateResourceNotFoundResponse() }
         Some(order) => {
             ApiResponse {
@@ -218,35 +209,24 @@ fn get_orders(params: Option<LenientForm<OrderQueryParams>>, map: State<OrderMap
     }
 }
 
-// For consistency, Orders should not be deleted. So, delete_order() sets the order.state to CANCELLED.
+/// Route for deleting an order. Note: For consistency, Orders cannot not be deleted. delete_order() sets the `order.state` to CANCELLED.
 #[delete("/orders/<id>")]
 fn delete_order(id: String, map: State<OrderMap>) -> ApiResponse {
     let mut hashmap = map.lock().expect("map locked.");
-    let order = hashmap.get(&id);
-    match order {
+    match hashmap.get(&id) {
         None => { generateResourceNotFoundResponse() }
         Some(order) => {
-            // Order can only be deleted if its state is ORDERED/
+            // Order can only be deleted(cancelled) if its state is ORDERED/
             if OrderStates::ORDERED.to_string().ne(order.state.as_ref().unwrap()) {
                 return generateBadRequestResponse(
                     format!("Order {} has already been {}",
                             &id, order.state.as_ref().unwrap()).as_str()
                 );
             }
-            let local: DateTime<Local> = Local::now();
-            let updatedOrder = Order {
-                id: Some(id.clone()),
-                //overwrite the unchangeable fields using original order field values
-                table_id: order.table_id.clone(),
-                menu_id: order.menu_id.clone(),
-                menu_name: order.menu_name.clone(),
-                create_time: order.create_time.clone(),
-                update_time: Some(local.to_rfc2822()),
-                state: Some(OrderStates::CANCELLED.to_string()),
-                served_time: order.served_time.clone(),
-                quantity: order.quantity.clone(),
-                estimated_serve_time: order.estimated_serve_time.clone(),
-            };
+            let mut updatedOrder = Order::create_from(order);
+            updatedOrder.update_time = Some(Local::now().to_rfc2822());
+            updatedOrder.state = Some(OrderStates::CANCELLED.to_string());
+
             hashmap.insert(id.clone(), updatedOrder);
             ApiResponse {
                 status: Status::Accepted,
@@ -264,7 +244,7 @@ fn delete_order(id: String, map: State<OrderMap>) -> ApiResponse {
 #[put("/config", format = "json", data = "<payload>")]
 fn update_config(payload: Json<Config>, tables: State<TableCount>) -> ApiResponse {
     // For now, we have only one config.
-    tables.inner().0.store(payload.0.table_count, Ordering::Relaxed);
+    tables.0.store(payload.0.table_count, Ordering::Relaxed);
     ApiResponse {
         status: Status::Ok,
         json: json!({
