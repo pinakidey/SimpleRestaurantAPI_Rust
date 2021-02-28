@@ -28,11 +28,13 @@ Please check the [API_SPEC.md](API_SPEC.md) for API specification.
 `rustup default nightly`
 
 ### Build/Test/Run
-(Inside project root directory)
+(Inside project root directory, run the following commands)
 >`cargo build` <br/>
 `cargo test`  <br/>
-`cargo run`   <br/><br/>
-(Run tests that require application to be running)<br/>
+`cargo run`   <br/>
+(Since, the worker threads are run on application start, there would be lots of logs being written.) <br/>
+ 
+>(Run tests that require application to be running)<br/>
 `cargo test -- --ignored` <br/>
 (To create docs, run) <br/>
 `cargo doc --no-deps --target-dir docs`
